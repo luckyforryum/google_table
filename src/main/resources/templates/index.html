@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Mini Google Таблиц</title>
+    <style>
+        table {
+            border-collapse: collapse;
+        }
+        th, td {
+            border: 1px solid black;
+            width: 50px;
+            height: 30px;
+            text-align: center;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+<table id="spreadsheet">
+    <tr>
+        <th></th>
+        <th>A</th>
+        <th>B</th>
+        <th>C</th>
+        <th>D</th>
+    </tr>
+    <tr>
+        <th>1</th>
+        <td contenteditable="true" data-cell="A1"></td>
+        <td contenteditable="true" data-cell="B1"></td>
+        <td contenteditable="true" data-cell="C1"></td>
+        <td contenteditable="true" data-cell="D1"></td>
+    </tr>
+    <tr>
+        <th>2</th>
+        <td contenteditable="true" data-cell="A2"></td>
+        <td contenteditable="true" data-cell="B2"></td>
+        <td contenteditable="true" data-cell="C2"></td>
+        <td contenteditable="true" data-cell="D2"></td>
+    </tr>
+    <tr>
+        <th>3</th>
+        <td contenteditable="true" data-cell="A3"></td>
+        <td contenteditable="true" data-cell="B3"></td>
+        <td contenteditable="true" data-cell="C3"></td>
+        <td contenteditable="true" data-cell="D3"></td>
+    </tr>
+    <tr>
+        <th>4</th>
+        <td contenteditable="true" data-cell="A4"></td>
+        <td contenteditable="true" data-cell="B4"></td>
+        <td contenteditable="true" data-cell="C4"></td>
+        <td contenteditable="true" data-cell="D4"></td>
+    </tr>
+</table>
+<script>
+
+
+    document.querySelector('#spreadsheet').addEventListener('keydown', function (event) {
+        if (event.key === 'Enter') {
+            event.preventDefault();
+            const cell = event.target;
+            const cellValue = cell.textContent;
+            const cellName = cell.getAttribute('data-cell');
+
+            if (cellValue.startsWith('=')) {
+                const formula = cellValue.substring(1);
+                const referencedCells = formula.match(/[A-D]\d+/g);
+                const cellValues = {};
+
+                if (referencedCells) {
+                    referencedCells.forEach(refCell => {
+                        const referencedCell = document.querySelector(`[data-cell="${refCell}"]`);
+                        if (referencedCell) {
+                            const cellValue = parseFloat(referencedCell.textContent) || 0;
+                            cellValues[refCell] = cellValue;
+                        }
+                    });
+                }
+
+                let result = formula;
+                for (const refCell in cellValues) {
+                    const value = cellValues[refCell];
+                    result = result.replace(refCell, value);
+                }
+
+                fetch('/processFormula', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ formula, result, cellName, cellValue })
+                })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.result !== undefined) {
+                            cell.textContent = data.result;
+                        } else {
+                            cell.textContent = "Ошибка";
+                        }
+                    })
+                    .catch(error => {
+                        console.error(error);
+                        cell.textContent = "Ошибка";
+                    });
+            } else {
+                cell.blur();
+            }
+        }
+    });
+
+    document.querySelector('#spreadsheet').addEventListener('keydown', function (event) {
+        if (event.key === 'Enter') {
+        event.preventDefault();
+        const cell = event.target;
+        const cellValue = cell.textContent;
+
+        if (cellValue.trim() !== '' && !cellValue.startsWith('=')) {
+        const cellName = cell.getAttribute('data-cell');
+
+        const saveUrl = '/saveCellValue';
+
+        fetch(saveUrl, {
+        method: 'POST',
+        headers: {
+        'Content-Type': 'application/json',
+    },
+        body: JSON.stringify({ cellName: cellName, cellValue: cellValue })
+    })
+    }
+    }
+    });
+</script>
+</body>
+</html>
